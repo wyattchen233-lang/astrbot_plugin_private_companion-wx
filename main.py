@@ -89,6 +89,13 @@ from .astrbot_host.stranger_notice import refuse_stranger
 
 PLUGIN_NAME = "astrbot_plugin_private_companion"
 PLUGIN_VERSION = PRODUCT_VERSION
+
+
+def get_private_companion_api():
+    """Compatibility accessor for the existing read-only V2 extension facade."""
+    from .astrbot_host.memory_compat import current_api
+    return current_api()
+
 # 婉拒陌生号里，只有"该发却发不出去"才算预期未回。开关关闭、冷却、当日额度、
 # 权限或文案不可用，都是设计内的安静，连排障台账都不该记。
 STRANGER_NOTICE_FAILURES = frozenset({
@@ -165,6 +172,8 @@ class PrivateCompanionV2StagingPlugin(Star):
                 self.staging.register_routes()
             except Exception:
                 logger.warning("[CompanionV2] 共享宿主管理 API 注册失败", exc_info=True)
+            from .astrbot_host.memory_compat import activate
+            activate(self)
         except BaseException:
             self._retire_failed_initialization()
             raise
@@ -1232,7 +1241,13 @@ class PrivateCompanionV2StagingPlugin(Star):
         elif result.unwrap().get("handled") and not result.unwrap().get("replayed"):
             logger.info("[CompanionV2] 窗口临时上下文已清理")
 
+    def _memory_companion_coordination_status(self):
+        from .astrbot_host.memory_compat import coordination_status
+        return coordination_status(self)
+
     async def terminate(self) -> None:
+        from .astrbot_host.memory_compat import deactivate
+        deactivate(self)
         debounce_manager = getattr(self, "_private_debounce", None)
         if debounce_manager is not None:
             try:
