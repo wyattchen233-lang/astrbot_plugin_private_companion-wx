@@ -1,0 +1,43 @@
+--- a/main.py
++++ b/main.py
+@@ -109,6 +109,7 @@
+     def __init__(self, message, metadata, adapter, chat_id):
+         super().__init__(message.message_str, message, metadata, chat_id)
+         self.adapter, self.chat_id = adapter, chat_id
++        self.bot = adapter
+ 
+     async def send(self, message: MessageChain):
+         await self.adapter.send_chain(self.chat_id, message)
+@@ -157,6 +158,10 @@
+ 
+     def meta(self):
+         return self.metadata
++
++    def get_client(self):
++        """Expose the current authenticated adapter for native host identity checks."""
++        return self
+ 
+     def save_cursor(self, chat_id, cursor):
+         self.cursors[chat_id] = cursor
+--- a/metadata.yaml
++++ b/metadata.yaml
+@@ -1,7 +1,7 @@
+ name: wechat_trial_local
+ display_name: 微信连接
+ desc: agent-wechat 0.16.0 微信连接，支持后台勾选群聊和联系人、同步白名单及群名登记。
+-version: 0.5.8
++version: 0.5.9
+ author: Local
+ astrbot_version: '>=4.29.3,<5'
+ 
+--- a/management.py
++++ b/management.py
+@@ -192,7 +192,7 @@
+                 'poll_seconds': bot.get('poll_seconds', 3), 'health': health,
+                 'catalog': sorted(catalog.values(), key=lambda x: (not x['is_group'], x['name'], x['id'])),
+                 'whitelist_synced': all(x in whitelist for x in expected),
+-                'error': error, 'checked_at': time.time(), 'version': '0.5.8'}
++                'error': error, 'checked_at': time.time(), 'version': '0.5.9'}
+ 
+     async def apply(self, services, body):
+         if not isinstance(body, dict):

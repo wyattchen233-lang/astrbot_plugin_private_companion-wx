@@ -130,6 +130,10 @@ def event_identity(event: object) -> dict[str, str] | None:
     platform_id = getattr(meta, "id", None)
     platform_name = str(getattr(meta, "name", "") or "").casefold()
     account_id = _native_id(getattr(message, "self_id", None))
+    if platform_name == "agent_wechat_trial":
+        # The connector's self_id is a mention marker, not a QQ number or a
+        # WeChat login. Use its configured instance consistently with routing.
+        account_id = _native_id(platform_id)
     # QQ Official exposes a synthetic self id on C2C/direct events. The platform
     # instance id is the stable account key used by the setup account list.
     official = platform_name in {"qq_official", "qqofficial"} or str(platform_id or "").casefold().startswith(

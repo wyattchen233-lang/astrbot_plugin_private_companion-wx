@@ -10,6 +10,7 @@ __pycache__/
 *.orig
 *.rej
 *.patch
+!/integration/*.patch
 *.tmp
 *.bak
 /.zcode/

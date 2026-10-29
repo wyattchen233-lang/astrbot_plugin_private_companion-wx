@@ -35,7 +35,8 @@ VERIFIED_SERIES = frozenset(("4.27", "4.28", "4.29"))
 # Native routing is verified for the OneBot reverse-WS adapter and the two
 # QQ Official adapter names AstrBot exposes.  Keeping the allow-list here
 # prevents an arbitrary adapter from inheriting route privileges by accident.
-SUPPORTED_PLATFORM_NAMES = frozenset(("aiocqhttp", "qq_official", "qq_official_webhook"))
+WECHAT_PLATFORM_NAME = "agent_wechat_trial"
+SUPPORTED_PLATFORM_NAMES = frozenset(("aiocqhttp", "qq_official", "qq_official_webhook", WECHAT_PLATFORM_NAME))
 OFFICIAL_PLATFORM_NAMES = frozenset(("qq_official", "qq_official_webhook"))
 _REPORTED_UNVERIFIED = set()
 NATIVE_LOOKUP_TIMEOUT_SECONDS = 20
@@ -194,7 +195,7 @@ def event_account_id(event):
     """
     message = getattr(event, "message_obj", None)
     name = event_platform_name(event)
-    if official_platform_name(name):
+    if official_platform_name(name) or name == WECHAT_PLATFORM_NAME:
         return route_id(event_platform_id(event))
     if name == "aiocqhttp":
         return account_number(getattr(message, "self_id", None))
@@ -216,6 +217,8 @@ def native_user_subject_id(platform_name, sender_id):
         return "onebot-user:" + sender_id
     if official_platform_name(platform_name):
         return "qq-official-user:" + sender_id
+    if platform_name == WECHAT_PLATFORM_NAME:
+        return "wechat-user:" + sender_id
     raise ValueError("unsupported native user platform")
 
 
@@ -233,6 +236,14 @@ def native_client_connected(platform, account_id, client=None):
     if meta.name == "aiocqhttp":
         clients = getattr(client, "_wsr_api_clients", None)
         return isinstance(clients, dict) and bool(clients.get(str(account_id)))
+    if meta.name == WECHAT_PLATFORM_NAME:
+        # The local connector is the authenticated session client. Do not infer
+        # connectivity from the presence of an HTTP client or a configured row.
+        health = getattr(platform, "health", None)
+        return (client is platform and str(account_id) == str(meta.id)
+                and getattr(platform, "running", False) is True
+                and getattr(platform, "closed", True) is False
+                and isinstance(health, dict) and health.get("auth_status") == "logged_in")
     if getattr(client, "is_shutting_down", False):
         return False
     try:
